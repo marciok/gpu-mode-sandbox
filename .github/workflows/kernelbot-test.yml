@@ -1,0 +1,45 @@
+# .github/workflows/kernelbot-test.yml
+name: KernelBot Test Submission
+
+on:
+  workflow_dispatch:
+    inputs:
+      submission_id:
+        required: true
+        type: string
+      problem:
+        required: true
+        type: string
+
+jobs:
+  benchmark:
+    # runs-on: [self-hosted, macos, metal]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Print submission
+        run: |
+          echo "Submission ID: ${{ inputs.submission_id }}"
+          echo "Problem: ${{ inputs.problem }}"
+
+      - name: Simulate benchmark
+        run: |
+          mkdir -p results
+          python3 - <<'PY'
+          import json, random, time
+          result = {
+              "ok": True,
+              "score": round(random.uniform(0.1, 2.0), 4),
+              "runtime_ms": round(random.uniform(1, 20), 3),
+          }
+          print(json.dumps(result, indent=2))
+          open("results/result.json", "w").write(json.dumps(result))
+          PY
+
+      - name: Upload result
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernelbot-result
+          path: results/result.json
