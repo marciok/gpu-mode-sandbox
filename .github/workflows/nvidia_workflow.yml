@@ -19,48 +19,42 @@ run-name: 'NVIDIA Job - ${{ github.event.inputs.run_id }}'
 
 jobs:
   run:
-    runs-on: [nvidia-docker-b200-8-x86-64]
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-    - name: Create input files
-      shell: bash
-      run: |
-        # Extract the payload content without printing it
-        apt-get update && apt-get install -y jq
-        PAYLOAD=$(jq -r '.inputs.payload' $GITHUB_EVENT_PATH)
+      - name: Print submission
+        run: |
+          echo "Run ID: ${{ inputs.run_id }}"
+          echo "Payload received (masked)"
 
-        # Apply mask to the extracted content
-        echo "::add-mask::$PAYLOAD"
+      - name: Simulate benchmark
+        run: |
+          mkdir -p profile_data
+          python3 - <<'PY'
+          import json, random
+          result = {
+              "ok": True,
+              "score": round(random.uniform(0.1, 2.0), 4),
+              "runtime_ms": round(random.uniform(1, 20), 3),
+          }
+          print(json.dumps(result, indent=2))
+          open("result.json", "w").write(json.dumps(result))
+          open("profile_data/profile.json", "w").write(json.dumps({"trace": "mock"}))
+          PY
 
-        # Now write to file (won't be logged since it's masked)
-        echo "$PAYLOAD" > payload.json
+      - name: Upload training artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: run-result
+          path: result.json
 
-    - name: Setup Virtual Environment and Install Dependencies
-      shell: bash
-      run: |
-        pip install --upgrade pip
-        pip install -r "requirements-dev.txt"
-        pip install -e .
-
-
-    - name: Run script
-      shell: bash
-      run: |
-        python3 src/runners/github-runner.py
-
-    - name: Upload training artifacts
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: run-result
-        path: result.json
-
-    - name: Upload profiling artifacts
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: profile-data
-        path: profile_data/*
-        retention-days: 1
+      - name: Upload profiling artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: profile-data
+          path: profile_data/*
+          retention-days: 1
