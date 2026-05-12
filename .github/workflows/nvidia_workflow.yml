@@ -33,9 +33,15 @@ jobs:
         run: |
           mkdir -p profile_data
           python3 - <<'PY'
-          import json, random
+          import json, random, time
+          from datetime import datetime, timezone
 
           def mock_run(name):
+              duration = round(random.uniform(0.5, 5.0), 3)
+              start_ts = time.time()
+              end_ts = start_ts + duration
+              start_iso = datetime.fromtimestamp(start_ts, tz=timezone.utc).isoformat()
+              end_iso = datetime.fromtimestamp(end_ts, tz=timezone.utc).isoformat()
               return {
                   "command": f"python3 eval.py --mode {name}",
                   "stdout": f"{name} ok",
@@ -43,7 +49,9 @@ jobs:
                   "success": True,
                   "passed": True,
                   "exit_code": 0,
-                  "duration": round(random.uniform(0.5, 5.0), 3),
+                  "start": start_iso,
+                  "end": end_iso,
+                  "duration": duration,
                   "result": {
                       "score": round(random.uniform(0.1, 2.0), 4),
                       "runtime_ms": round(random.uniform(1, 20), 3),
