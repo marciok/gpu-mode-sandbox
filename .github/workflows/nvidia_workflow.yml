@@ -34,10 +34,29 @@ jobs:
           mkdir -p profile_data
           python3 - <<'PY'
           import json, random
+
+          def mock_run(name):
+              return {
+                  "command": f"python3 eval.py --mode {name}",
+                  "stdout": f"{name} ok",
+                  "stderr": "",
+                  "success": True,
+                  "passed": True,
+                  "exit_code": 0,
+                  "duration": round(random.uniform(0.5, 5.0), 3),
+                  "result": {
+                      "score": round(random.uniform(0.1, 2.0), 4),
+                      "runtime_ms": round(random.uniform(1, 20), 3),
+                  },
+              }
+
           result = {
-              "ok": True,
-              "score": round(random.uniform(0.1, 2.0), 4),
-              "runtime_ms": round(random.uniform(1, 20), 3),
+              "runs": {
+                  "test": mock_run("test"),
+                  "benchmark": mock_run("benchmark"),
+              },
+              "compilation": {"success": True, "stdout": "", "stderr": ""},
+              "system": {"gpu": "mock-B200", "runner": "ubuntu-latest"},
           }
           print(json.dumps(result, indent=2))
           open("result.json", "w").write(json.dumps(result))
