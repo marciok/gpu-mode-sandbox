@@ -36,35 +36,64 @@ jobs:
           import json, random, time
           from datetime import datetime, timezone
 
-          def mock_run(name):
+          def iso(ts):
+              return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+
+          def run_result(name, result_payload):
               duration = round(random.uniform(0.5, 5.0), 3)
-              start_ts = time.time()
-              end_ts = start_ts + duration
-              start_iso = datetime.fromtimestamp(start_ts, tz=timezone.utc).isoformat()
-              end_iso = datetime.fromtimestamp(end_ts, tz=timezone.utc).isoformat()
               return {
+                  "success": True,
+                  "passed": True,
                   "command": f"python3 eval.py --mode {name}",
                   "stdout": f"{name} ok",
                   "stderr": "",
-                  "success": True,
-                  "passed": True,
                   "exit_code": 0,
-                  "start": start_iso,
-                  "end": end_iso,
                   "duration": duration,
-                  "result": {
-                      "score": round(random.uniform(0.1, 2.0), 4),
-                      "runtime_ms": round(random.uniform(1, 20), 3),
-                  },
+                  "result": result_payload,
               }
 
+          def eval_result(run):
+              now = time.time()
+              return {
+                  "start": iso(now),
+                  "end": iso(now + run["duration"]),
+                  "compilation": None,
+                  "run": run,
+                  "profile": None,
+              }
+
+          test_result = {
+              "test-count": 1,
+              "test.0.status": "pass",
+              "test.0.spec": "mock test",
+          }
+          bench_payload = {
+              "benchmark-count": 1,
+              "benchmark.0.status": "pass",
+              "benchmark.0.spec": "mock benchmark",
+              "benchmark.0.mean": int(random.uniform(1_000_000, 20_000_000)),
+              "benchmark.0.err": int(random.uniform(1_000, 100_000)),
+              "benchmark.0.best": int(random.uniform(900_000, 1_000_000)),
+              "benchmark.0.worst": int(random.uniform(20_000_000, 25_000_000)),
+          }
+
           result = {
-              "runs": {
-                  "test": mock_run("test"),
-                  "benchmark": mock_run("benchmark"),
+              "success": True,
+              "error": "",
+              "system": {
+                  "gpu": "mock-B200",
+                  "device_count": 1,
+                  "cpu": "mock-cpu",
+                  "runtime": "CUDA",
+                  "platform": "Linux",
+                  "torch": "2.4.0",
+                  "hostname": "mock-runner",
               },
-              "compilation": {"success": True, "stdout": "", "stderr": ""},
-              "system": {"gpu": "mock-B200", "runner": "ubuntu-latest"},
+              "runs": {
+                  "test": eval_result(run_result("test", test_result)),
+                  "benchmark": eval_result(run_result("benchmark", bench_payload)),
+                  "leaderboard": eval_result(run_result("leaderboard", bench_payload)),
+              },
           }
           print(json.dumps(result, indent=2))
           open("result.json", "w").write(json.dumps(result))
